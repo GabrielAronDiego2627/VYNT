@@ -1,0 +1,458 @@
+{
+  "entidades": [
+    {
+      "id": "usuario",
+      "nombre": "USUARIO",
+      "atributos": [
+        "Id usuario",
+        "Nombre",
+        "Fecha de nacimiento",
+        "Género",
+        "Peso corporal (kg)"
+      ],
+      "clave": [
+        "Id usuario"
+      ],
+      "foranea": [],
+      "x": 338,
+      "y": 413
+    },
+    {
+      "id": "plantilla",
+      "nombre": "PLANTILLA",
+      "atributos": [
+        "Id plantilla",
+        "Nombre",
+        "Fecha de creación",
+        "Id usuario"
+      ],
+      "clave": [
+        "Id plantilla"
+      ],
+      "foranea": [
+        "Id usuario"
+      ],
+      "x": 738,
+      "y": 413
+    },
+    {
+      "id": "ejercicio",
+      "nombre": "EJERCICIO",
+      "atributos": [
+        "Id ejercicio",
+        "Nombre",
+        "Vídeo",
+        "Equipamiento",
+        "Tipo"
+      ],
+      "clave": [
+        "Id ejercicio"
+      ],
+      "foranea": [],
+      "x": 1138,
+      "y": 413
+    },
+    {
+      "id": "musculo",
+      "nombre": "MÚSCULO",
+      "atributos": [
+        "Id músculo",
+        "Nombre"
+      ],
+      "clave": [
+        "Id músculo"
+      ],
+      "foranea": [],
+      "x": 1612,
+      "y": 413
+    },
+    {
+      "id": "sesion",
+      "nombre": "SESIÓN",
+      "atributos": [
+        "Id sesión",
+        "Nombre",
+        "Fecha",
+        "Hora de inicio",
+        "Duración (min)",
+        "Volumen total (kg)",
+        "Id usuario",
+        "Id plantilla"
+      ],
+      "clave": [
+        "Id sesión"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id plantilla"
+      ],
+      "x": 738,
+      "y": 805
+    },
+    {
+      "id": "serie",
+      "nombre": "SERIE",
+      "atributos": [
+        "Id serie",
+        "Nº de serie",
+        "Peso (kg)",
+        "Repeticiones",
+        "Id sesión",
+        "Id ejercicio"
+      ],
+      "clave": [
+        "Id serie"
+      ],
+      "foranea": [
+        "Id sesión",
+        "Id ejercicio"
+      ],
+      "x": 1138,
+      "y": 805
+    },
+    {
+      "id": "rango",
+      "nombre": "RANGO",
+      "atributos": [
+        "Id rango",
+        "Nombre",
+        "Orden"
+      ],
+      "clave": [
+        "Id rango"
+      ],
+      "foranea": [],
+      "x": 1612,
+      "y": 805
+    }
+  ],
+  "correspondencias": [
+    {
+      "id": "crea",
+      "nombre": "CREA",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 538,
+      "y": 413,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "1",
+          "obligatoria": false
+        },
+        {
+          "entidad": "plantilla",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "realiza",
+      "nombre": "REALIZA",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 538,
+      "y": 805,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "1",
+          "obligatoria": false
+        },
+        {
+          "entidad": "sesion",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "origina",
+      "nombre": "ORIGINA",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 819,
+      "y": 700,
+      "conexiones": [
+        {
+          "entidad": "plantilla",
+          "cardinalidad": "1",
+          "obligatoria": false
+        },
+        {
+          "entidad": "sesion",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "incluye",
+      "nombre": "INCLUYE",
+      "atributos": [
+        "Id plantilla",
+        "Id ejercicio",
+        "Orden",
+        "Series objetivo",
+        "Repeticiones objetivo"
+      ],
+      "clave": [
+        "Id plantilla",
+        "Id ejercicio"
+      ],
+      "foranea": [
+        "Id plantilla",
+        "Id ejercicio"
+      ],
+      "x": 938,
+      "y": 413,
+      "conexiones": [
+        {
+          "entidad": "plantilla",
+          "cardinalidad": "M",
+          "obligatoria": true
+        },
+        {
+          "entidad": "ejercicio",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "tiene",
+      "nombre": "TIENE",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 938,
+      "y": 805,
+      "conexiones": [
+        {
+          "entidad": "sesion",
+          "cardinalidad": "1",
+          "obligatoria": true
+        },
+        {
+          "entidad": "serie",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "seusaen",
+      "nombre": "SE USA EN",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 1210,
+      "y": 700,
+      "conexiones": [
+        {
+          "entidad": "ejercicio",
+          "cardinalidad": "1",
+          "obligatoria": false
+        },
+        {
+          "entidad": "serie",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "trabaja",
+      "nombre": "TRABAJA",
+      "atributos": [
+        "Id ejercicio",
+        "Id músculo",
+        "Principal"
+      ],
+      "clave": [
+        "Id ejercicio",
+        "Id músculo"
+      ],
+      "foranea": [
+        "Id ejercicio",
+        "Id músculo"
+      ],
+      "x": 1381,
+      "y": 402,
+      "conexiones": [
+        {
+          "entidad": "ejercicio",
+          "cardinalidad": "M",
+          "obligatoria": true
+        },
+        {
+          "entidad": "musculo",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "define",
+      "nombre": "DEFINE",
+      "atributos": [
+        "Id músculo",
+        "Id rango",
+        "Peso mínimo (kg)"
+      ],
+      "clave": [
+        "Id músculo",
+        "Id rango"
+      ],
+      "foranea": [
+        "Id músculo",
+        "Id rango"
+      ],
+      "x": 1694,
+      "y": 700,
+      "conexiones": [
+        {
+          "entidad": "musculo",
+          "cardinalidad": "M",
+          "obligatoria": true
+        },
+        {
+          "entidad": "rango",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "exige",
+      "nombre": "EXIGE",
+      "atributos": [
+        "Id ejercicio",
+        "Id rango",
+        "Peso mínimo (kg)"
+      ],
+      "clave": [
+        "Id ejercicio",
+        "Id rango"
+      ],
+      "foranea": [
+        "Id ejercicio",
+        "Id rango"
+      ],
+      "x": 1405,
+      "y": 805,
+      "conexiones": [
+        {
+          "entidad": "ejercicio",
+          "cardinalidad": "M",
+          "obligatoria": true
+        },
+        {
+          "entidad": "rango",
+          "cardinalidad": "N",
+          "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "alcanza",
+      "nombre": "ALCANZA",
+      "atributos": [
+        "Id usuario",
+        "Id músculo",
+        "Mejor peso (kg)",
+        "Fecha de la marca"
+      ],
+      "clave": [
+        "Id usuario",
+        "Id músculo"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id músculo"
+      ],
+      "x": 1312,
+      "y": 116,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "M",
+          "obligatoria": false
+        },
+        {
+          "entidad": "musculo",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "logra",
+      "nombre": "LOGRA",
+      "atributos": [
+        "Id usuario",
+        "Id ejercicio",
+        "Mejor peso (kg)",
+        "Fecha de la marca"
+      ],
+      "clave": [
+        "Id usuario",
+        "Id ejercicio"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id ejercicio"
+      ],
+      "x": 744,
+      "y": 200,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "M",
+          "obligatoria": false
+        },
+        {
+          "entidad": "ejercicio",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "esamigode",
+      "nombre": "ES AMIGO DE",
+      "atributos": [
+        "Id usuario",
+        "Id amigo",
+        "Fecha de alta",
+        "Estado"
+      ],
+      "clave": [
+        "Id usuario",
+        "Id amigo"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id amigo"
+      ],
+      "x": 138,
+      "y": 413,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "M",
+          "obligatoria": false
+        },
+        {
+          "entidad": "usuario",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    }
+  ]
+}
