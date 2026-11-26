@@ -41,7 +41,7 @@
       "atributos": [
         "Id ejercicio",
         "Nombre",
-        "Vídeo",
+        "Foto",
         "Equipamiento",
         "Tipo",
         "Descripción"
