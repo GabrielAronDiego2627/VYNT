@@ -57,12 +57,15 @@
       "nombre": "MÚSCULO",
       "atributos": [
         "Id músculo",
-        "Nombre"
+        "Nombre",
+        "Id grupo"
       ],
       "clave": [
         "Id músculo"
       ],
-      "foranea": [],
+      "foranea": [
+        "Id grupo"
+      ],
       "x": 1612,
       "y": 413
     },
@@ -116,7 +119,9 @@
       "atributos": [
         "Id rango",
         "Nombre",
-        "Orden"
+        "Orden",
+        "Color",
+        "Representación"
       ],
       "clave": [
         "Id rango"
@@ -124,6 +129,20 @@
       "foranea": [],
       "x": 1612,
       "y": 805
+    },
+    {
+      "id": "grupo",
+      "nombre": "GRUPO MUSCULAR",
+      "atributos": [
+        "Id grupo",
+        "Nombre"
+      ],
+      "clave": [
+        "Id grupo"
+      ],
+      "foranea": [],
+      "x": 1612,
+      "y": 130
     }
   ],
   "correspondencias": [
@@ -451,6 +470,27 @@
           "entidad": "usuario",
           "cardinalidad": "N",
           "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "pertenece",
+      "nombre": "PERTENECE A",
+      "atributos": [],
+      "clave": [],
+      "foranea": [],
+      "x": 1612,
+      "y": 290,
+      "conexiones": [
+        {
+          "entidad": "musculo",
+          "cardinalidad": "N",
+          "obligatoria": true
+        },
+        {
+          "entidad": "grupo",
+          "cardinalidad": "1",
+          "obligatoria": true
         }
       ]
     }
