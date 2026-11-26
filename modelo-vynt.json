@@ -368,7 +368,7 @@
         {
           "entidad": "ejercicio",
           "cardinalidad": "M",
-          "obligatoria": true
+          "obligatoria": false
         },
         {
           "entidad": "rango",
