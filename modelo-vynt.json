@@ -102,7 +102,9 @@
         "Peso (kg)",
         "Repeticiones",
         "Id sesión",
-        "Id ejercicio"
+        "Id ejercicio",
+        "Tipo",
+        "RPE"
       ],
       "clave": [
         "Id serie"
@@ -144,6 +146,22 @@
       "foranea": [],
       "x": 1612,
       "y": 130
+    },
+    {
+      "id": "logro",
+      "nombre": "LOGRO",
+      "atributos": [
+        "Id logro",
+        "Nombre",
+        "Descripción",
+        "Icono"
+      ],
+      "clave": [
+        "Id logro"
+      ],
+      "foranea": [],
+      "x": 140,
+      "y": 90
     }
   ],
   "correspondencias": [
@@ -218,7 +236,8 @@
         "Id ejercicio",
         "Orden",
         "Series objetivo",
-        "Repeticiones objetivo"
+        "Repeticiones objetivo",
+        "Descanso (s)"
       ],
       "clave": [
         "Id plantilla",
@@ -494,6 +513,68 @@
           "entidad": "grupo",
           "cardinalidad": "1",
           "obligatoria": true
+        }
+      ]
+    },
+    {
+      "id": "obtiene",
+      "nombre": "OBTIENE",
+      "atributos": [
+        "Id usuario",
+        "Id logro",
+        "Fecha"
+      ],
+      "clave": [
+        "Id usuario",
+        "Id logro"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id logro"
+      ],
+      "x": 140,
+      "y": 250,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "M",
+          "obligatoria": false
+        },
+        {
+          "entidad": "logro",
+          "cardinalidad": "N",
+          "obligatoria": false
+        }
+      ]
+    },
+    {
+      "id": "legusta",
+      "nombre": "LE GUSTA",
+      "atributos": [
+        "Id usuario",
+        "Id sesión",
+        "Fecha"
+      ],
+      "clave": [
+        "Id usuario",
+        "Id sesión"
+      ],
+      "foranea": [
+        "Id usuario",
+        "Id sesión"
+      ],
+      "x": 400,
+      "y": 620,
+      "conexiones": [
+        {
+          "entidad": "usuario",
+          "cardinalidad": "M",
+          "obligatoria": false
+        },
+        {
+          "entidad": "sesion",
+          "cardinalidad": "N",
+          "obligatoria": false
         }
       ]
     }
