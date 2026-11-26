@@ -321,7 +321,8 @@
       "atributos": [
         "Id músculo",
         "Id rango",
-        "Peso mínimo (kg)"
+        "Peso mínimo hombre (kg)",
+        "Peso mínimo mujer (kg)"
       ],
       "clave": [
         "Id músculo",
@@ -352,7 +353,8 @@
       "atributos": [
         "Id ejercicio",
         "Id rango",
-        "Peso mínimo (kg)"
+        "Peso mínimo hombre (kg)",
+        "Peso mínimo mujer (kg)"
       ],
       "clave": [
         "Id ejercicio",
@@ -368,7 +370,7 @@
         {
           "entidad": "ejercicio",
           "cardinalidad": "M",
-          "obligatoria": false
+          "obligatoria": true
         },
         {
           "entidad": "rango",
