@@ -43,7 +43,8 @@
         "Nombre",
         "Vídeo",
         "Equipamiento",
-        "Tipo"
+        "Tipo",
+        "Descripción"
       ],
       "clave": [
         "Id ejercicio"
