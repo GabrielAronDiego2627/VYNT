@@ -8,7 +8,8 @@
         "Nombre",
         "Fecha de nacimiento",
         "Género",
-        "Peso corporal (kg)"
+        "Peso corporal (kg)",
+        "Mapa muscular"
       ],
       "clave": [
         "Id usuario"

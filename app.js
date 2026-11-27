@@ -85,11 +85,11 @@ async function cargarUsuario() {
   ME = me;
   AM = ok(await sb.from('es_amigo_de').select('*'));
   const relIds = [...new Set(AM.flatMap(a => [a.id_usuario, a.id_amigo]))].filter(id => id !== YO);
-  const users = relIds.length ? ok(await sb.from('usuario').select('id_usuario,nombre,genero').in('id_usuario', relIds)) : [];
+  const users = relIds.length ? ok(await sb.from('usuario').select('id_usuario,nombre,genero,mapa_muscular').in('id_usuario', relIds)) : [];
   const amigos = new Set(AM.filter(a => a.estado === 'aceptada').map(a => a.id_usuario === YO ? a.id_amigo : a.id_usuario));
   const nombres = {}; users.forEach(u => nombres[u.id_usuario] = u);
-  U = [{ id: YO, n: ME.nombre, g: ME.genero, c: '#C8F135' }];
-  [...amigos].filter(id => nombres[id]).sort((a, b) => nombres[a].nombre.localeCompare(nombres[b].nombre)).forEach((id, i) => U.push({ id, n: nombres[id].nombre, g: nombres[id].genero, c: COLORES[i % COLORES.length] }));
+  U = [{ id: YO, n: ME.nombre, g: ME.genero, mapa: ME.mapa_muscular, c: '#C8F135' }];
+  [...amigos].filter(id => nombres[id]).sort((a, b) => nombres[a].nombre.localeCompare(nombres[b].nombre)).forEach((id, i) => U.push({ id, n: nombres[id].nombre, g: nombres[id].genero, mapa: nombres[id].mapa_muscular, c: COLORES[i % COLORES.length] }));
   UID = {}; U.forEach(u => UID[u.id] = u);
   st.nombres = nombres;
   // sesiones: todas las mías y las de los amigos de las últimas 6 semanas
@@ -175,17 +175,21 @@ async function guardarLogros() { // guarda en OBTIENE los logros nuevos
 
 /* cuerpo */
 function body(fill, o = {}) {
+  const F = FORMAS[(o.mapa || (ME && ME.mapa_muscular)) === 'Mujer' ? 'mujer' : 'hombre'];
   const pts = L => L.map(p => p.join(',')).join(' ');
-  const view = (parts, label, ox) => {
-    let g = `<g transform="translate(${ox},0)"><polygon class="sil" points="${pts(FORMAS.sil)}"/>`;
-    ['', 'transform="translate(200,0) scale(-1,1)"'].forEach(t => {
+  const espejo = ['', 'transform="translate(200,0) scale(-1,1)"'];
+  const pelo = L => L ? espejo.map(t => `<g ${t}><polygon class="pelo" points="${pts(L)}"/></g>`).join('') : '';
+  const view = (parts, label, ox, back) => {
+    let g = `<g transform="translate(${ox},0)">${back ? '' : pelo(F.pelo_frente)}<polygon class="sil" points="${pts(F.sil)}"/>`;
+    espejo.forEach(t => {
       g += `<g ${t}>`;
       parts.forEach(([m, polys]) => polys.forEach(pl => { g += `<polygon class="m${o.sel === m ? ' on' : ''}" data-m="${esc(m)}" points="${pts(pl)}" fill="${fill(m)}"><title>${esc(m)}</title></polygon>`; }));
       g += '</g>';
     });
+    if (back) g += pelo(F.pelo_espalda) + (F.coleta ? `<polygon class="pelo" points="${pts(F.coleta)}"/>` : ''); else g += pelo(F.flequillo);
     return g + `<text class="lbl" x="100" y="364">${label}</text></g>`;
   };
-  return `<svg class="body-map${o.tap ? ' tap' : ''}" viewBox="34 0 262 372" role="img" aria-label="${esc(o.label || 'Mapa muscular')}">${view(FORMAS.front, 'FRENTE', 0)}${view(FORMAS.back, 'ESPALDA', 130)}</svg>`;
+  return `<svg class="body-map${o.tap ? ' tap' : ''}" viewBox="34 0 262 372" role="img" aria-label="${esc(o.label || 'Mapa muscular')}">${view(F.front, 'FRENTE', 0, false)}${view(F.back, 'ESPALDA', 130, true)}</svg>`;
 }
 const rk = (o, txt) => `<span class="rank" style="background:${R[o].c}">${R[o].i} ${esc(txt || R[o].n)}</span>`;
 const fotoSrc = (f, k) => `${f}/${k}.jpg`;
@@ -239,7 +243,7 @@ function vRangos() {
   const top = R.length - 1;
   return `<div class="top"><div><div class="eyebrow">Mapa de rangos</div><h1>${u.id === YO ? 'Tus rangos' : esc(u.n)}</h1></div>${rk(r.glob, 'Nivel ' + R[r.glob].n)}</div>
   ${U.length > 1 ? `<div class="chips" role="group" aria-label="Ver los rangos de">${U.map(x => `<button class="chip" type="button" data-who="${x.id}" aria-pressed="${st.who === x.id}">${x.id === YO ? 'Tú' : esc(x.n)}</button>`).join('')}</div>` : ''}
-  <section class="card cut">${body(m => R[r.mus[m]].c, { tap: true, sel, label: 'Rangos por músculo' })}
+  <section class="card cut">${body(m => R[r.mus[m]].c, { tap: true, sel, mapa: u.mapa, label: 'Rangos por músculo' })}
   <div class="legend" style="margin-top:6px">${R.map(x => `<span><i class="sq" style="background:${x.c}"></i>${esc(x.n)}</span>`).join('')}</div></section>
   <div class="grid2" style="margin-bottom:12px">${Object.keys(GR).map(g => `<div class="stat" style="border-left-color:${R[r.grp[g]].c}"><span>${esc(g)}</span><b style="font-size:19px">${R[r.grp[g]].i} ${esc(R[r.grp[g]].n)}</b></div>`).join('')}</div>
   <section class="card">${sel ? `<div class="row between" style="margin-bottom:6px"><div><div class="eyebrow">${esc(M2G[sel])}</div><h2 style="margin:0">${esc(sel)}</h2></div>${rk(r.mus[sel])}</div><button class="btn sm ghost" type="button" data-mus="" style="margin-bottom:8px">Ver todos los ejercicios</button>` : `<h2>${u.id === YO ? 'Tus ejercicios' : 'Sus ejercicios'}</h2><p class="small mut" style="margin:-4px 0 8px">Toca un músculo del mapa para filtrar.</p>`}
@@ -506,6 +510,8 @@ function vPerfil() {
   <form id="fperfil" class="card cut" novalidate>
    <label class="fld"><span class="eyebrow">Nombre</span><input class="txt" name="nombre" required maxlength="40" value="${esc(ME.nombre)}"></label>
    <label class="fld"><span class="eyebrow">Género</span><select class="sel" name="genero" style="width:100%;min-height:44px">${['', 'Hombre', 'Mujer', 'Otro'].map(g => `<option value="${g}" ${ME.genero === g || (!ME.genero && !g) ? 'selected' : ''}>${g || 'Sin indicar'}</option>`).join('')}</select></label>
+   <div class="fld"><span class="eyebrow">Mapa muscular</span><div class="seg" role="group" aria-label="Mapa muscular" style="margin:0">${['Hombre', 'Mujer'].map(v => `<button type="button" data-mapa="${v}" aria-pressed="${(st.mapaDraft || ME.mapa_muscular) === v}">${v}</button>`).join('')}</div></div>
+   <div style="max-width:260px;margin:0 auto 12px">${body(() => '#3B5418', { mapa: st.mapaDraft || ME.mapa_muscular, label: 'Vista previa del mapa' })}</div>
    <div class="grid2"><label class="fld"><span class="eyebrow">Peso corporal (kg)</span><input class="txt" name="peso" type="number" min="20" max="300" step="0.1" inputmode="decimal" value="${ME.peso_corporal_kg ?? ''}"></label>
    <label class="fld"><span class="eyebrow">Nacimiento</span><input class="txt" name="nac" type="date" value="${ME.fecha_nacimiento ?? ''}"></label></div>
    <p class="small mut" style="margin:0 0 10px">Los pesos mínimos de cada rango son distintos para hombre y mujer. "Otro" y "Sin indicar" usan la tabla de hombre.</p>
@@ -618,7 +624,8 @@ document.addEventListener('click', async ev => {
   if (d.close !== undefined) { if (st.sheet === 'ficha' && st.prevSheet) { st.sheet = st.prevSheet; st.prevSheet = null; } else if (st.sheet === 'buscar' && bq.pick === 'plant') { st.sheet = 'crear'; bq.pick = null; } else { st.sheet = null; bq.pick = null; } render(); return; }
   if (d.seg) { st.seg = d.seg; render(); return; }
   if (d.open === 'buscar') { bq.pick = null; st.prevSheet = null; st.sheet = 'buscar'; render(); return; }
-  if (d.open === 'perfil') { st.sheet = 'perfil'; render(); return; }
+  if (d.open === 'perfil') { st.mapaDraft = null; st.sheet = 'perfil'; render(); return; }
+  if (d.mapa) { const f = $('fperfil'); const keep = f ? Object.fromEntries(new FormData(f)) : null; st.mapaDraft = d.mapa; render(); if (keep) { const n = $('fperfil'); Object.entries(keep).forEach(([k, v]) => { if (n.elements[k]) n.elements[k].value = v; }); } return; }
   if (d.open === 'crear') { draft = { n: '', e: [], id: null }; st.sheet = 'crear'; render(); return; }
   if (d.open === 'pick') { draft.n = $('pn').value; bq.pick = 'plant'; st.sheet = 'buscar'; render(); $('scr').scrollTop = 0; return; }
   if (d.open === 'pickLive') { bq.pick = 'live'; st.sheet = 'buscar'; render(); $('scr').scrollTop = 0; return; }
@@ -691,10 +698,10 @@ document.addEventListener('submit', async ev => {
     if (!g('nombre')) { msg.className = 'msg e'; msg.textContent = 'Escribe tu nombre.'; return; }
     const peso = g('peso') ? +g('peso') : null;
     if (peso != null && !(peso > 0)) { msg.className = 'msg e'; msg.textContent = 'El peso no es válido.'; return; }
-    const upd = { nombre: g('nombre'), genero: g('genero') || null, peso_corporal_kg: peso, fecha_nacimiento: g('nac') || null };
+    const upd = { nombre: g('nombre'), genero: g('genero') || null, peso_corporal_kg: peso, fecha_nacimiento: g('nac') || null, mapa_muscular: st.mapaDraft || ME.mapa_muscular };
     const { error } = await sb.from('usuario').update(upd).eq('id_usuario', YO);
     if (error) { msg.className = 'msg e'; msg.textContent = 'No se pudo guardar.'; return; }
-    Object.assign(ME, upd); UID[YO].n = ME.nombre; UID[YO].g = ME.genero;
+    Object.assign(ME, upd); UID[YO].n = ME.nombre; UID[YO].g = ME.genero; UID[YO].mapa = ME.mapa_muscular; st.mapaDraft = null;
     st.sheet = null; toast('Perfil guardado'); render();
   }
 });
