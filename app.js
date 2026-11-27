@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js?v=4';
+import { FORMAS } from './formas.js?v=5';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -88,7 +88,7 @@ async function cargarUsuario() {
   const users = relIds.length ? ok(await sb.from('usuario').select('id_usuario,nombre,genero,mapa_muscular').in('id_usuario', relIds)) : [];
   const amigos = new Set(AM.filter(a => a.estado === 'aceptada').map(a => a.id_usuario === YO ? a.id_amigo : a.id_usuario));
   const nombres = {}; users.forEach(u => nombres[u.id_usuario] = u);
-  U = [{ id: YO, n: ME.nombre, g: ME.genero, mapa: ME.mapa_muscular, c: '#C8F135' }];
+  U = [{ id: YO, n: ME.nombre, g: ME.genero, mapa: ME.mapa_muscular, c: '#3DBB2E' }];
   [...amigos].filter(id => nombres[id]).sort((a, b) => nombres[a].nombre.localeCompare(nombres[b].nombre)).forEach((id, i) => U.push({ id, n: nombres[id].nombre, g: nombres[id].genero, mapa: nombres[id].mapa_muscular, c: COLORES[i % COLORES.length] }));
   UID = {}; U.forEach(u => UID[u.id] = u);
   st.nombres = nombres;
@@ -214,7 +214,7 @@ function go(t) { st.tab = t; st.sheet = null; render(); $('scr').scrollTop = 0; 
 /* INICIO */
 function vInicio() {
   const r = ranks(YO), wv = weekVol(YO); const max = Math.max(...Object.values(wv), 1);
-  const shades = ['#1E2622', '#3B5418', '#7FA51A', '#C8F135'];
+  const shades = ['#1E2622', '#18501A', '#2F9E28', '#7CEB5C'];
   const lvl = v => v <= 0 ? 0 : v < max * .33 ? 1 : v < max * .66 ? 2 : 3;
   const ss = S.filter(s => s.u === YO && s.t > Date.now() - 7 * DAY);
   const olv = ss.length ? MUS.filter(m => wv[m] === 0) : [];
@@ -291,8 +291,8 @@ function chart(h) {
   const pts = h.map(p => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' ');
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Progreso del 1RM estimado"><line x1="${P}" x2="${W - 8}" y1="${H - 20}" y2="${H - 20}" stroke="#25302A"/>
   <text x="0" y="${Y(y1) + 10}" fill="#5E6B63" font-size="10">${Math.round(y1)}</text><text x="0" y="${H - 22}" fill="#5E6B63" font-size="10">${Math.round(y0)}</text>
-  <polyline points="${P},${H - 20} ${pts} ${X(x1)},${H - 20}" fill="rgba(200,241,53,.12)" stroke="none"/><polyline points="${pts}" fill="none" stroke="#C8F135" stroke-width="2.5" stroke-linejoin="miter"/>
-  ${h.map(p => `<rect x="${X(p[0]) - 3}" y="${Y(p[1]) - 3}" width="6" height="6" fill="#C8F135"/>`).join('')}
+  <polyline points="${P},${H - 20} ${pts} ${X(x1)},${H - 20}" fill="rgba(61,187,46,.15)" stroke="none"/><polyline points="${pts}" fill="none" stroke="#3DBB2E" stroke-width="2.5" stroke-linejoin="miter"/>
+  ${h.map(p => `<rect x="${X(p[0]) - 3}" y="${Y(p[1]) - 3}" width="6" height="6" fill="#3DBB2E"/>`).join('')}
   <text x="${P}" y="${H - 4}" fill="#5E6B63" font-size="10">${esc(fdate(x0))}</text><text x="${W - 8}" y="${H - 4}" fill="#5E6B63" font-size="10" text-anchor="end">${esc(fdate(x1))}</text></svg>`;
 }
 
@@ -512,7 +512,7 @@ function vPerfil() {
    <label class="fld"><span class="eyebrow">Nombre</span><input class="txt" name="nombre" required maxlength="40" value="${esc(ME.nombre)}"></label>
    <label class="fld"><span class="eyebrow">Género</span><select class="sel" name="genero" style="width:100%;min-height:44px">${['', 'Hombre', 'Mujer', 'Otro'].map(g => `<option value="${g}" ${ME.genero === g || (!ME.genero && !g) ? 'selected' : ''}>${g || 'Sin indicar'}</option>`).join('')}</select></label>
    <div class="fld"><span class="eyebrow">Mapa muscular</span><div class="seg" role="group" aria-label="Mapa muscular" style="margin:0">${['Hombre', 'Mujer'].map(v => `<button type="button" data-mapa="${v}" aria-pressed="${(st.mapaDraft || ME.mapa_muscular) === v}">${v}</button>`).join('')}</div></div>
-   <div style="max-width:260px;margin:0 auto 12px">${body(() => '#3B5418', { mapa: st.mapaDraft || ME.mapa_muscular, label: 'Vista previa del mapa' })}</div>
+   <div style="max-width:260px;margin:0 auto 12px">${body(() => '#18501A', { mapa: st.mapaDraft || ME.mapa_muscular, label: 'Vista previa del mapa' })}</div>
    <div class="grid2"><label class="fld"><span class="eyebrow">Peso corporal (kg)</span><input class="txt" name="peso" type="number" min="20" max="300" step="0.1" inputmode="decimal" value="${ME.peso_corporal_kg ?? ''}"></label>
    <label class="fld"><span class="eyebrow">Nacimiento</span><input class="txt" name="nac" type="date" value="${ME.fecha_nacimiento ?? ''}"></label></div>
    <p class="small mut" style="margin:0 0 10px">Los pesos mínimos de cada rango son distintos para hombre y mujer. "Otro" y "Sin indicar" usan la tabla de hombre.</p>
