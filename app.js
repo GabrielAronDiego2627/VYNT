@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js?v=6';
+import { FORMAS } from './formas.js?v=7';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -621,15 +621,30 @@ async function enviarAuth(form) {
   btn.disabled = false;
 }
 function showAuth() {
-  $('boot').hidden = true; $('tabs').hidden = true; const s = $('scr'); s.hidden = false; s.style.paddingBottom = '24px';
+  $('tabs').hidden = true; const s = $('scr'); s.hidden = false; s.style.paddingBottom = '24px';
   s.innerHTML = vAuth();
+  quitarSplash();
+}
+
+/* pantalla de carga */
+const T_INICIO = Date.now();
+const SPLASH = '<div class="marca" aria-hidden="true"><span class="sv">V</span><span class="sl">Y</span><span class="sl">N</span><span class="sl">T</span></div><i class="linea"></i>';
+let splashFuera = false;
+function mostrarSplash() { const b = $('boot'); b.className = 'load'; b.innerHTML = SPLASH; b.hidden = false; splashFuera = false; }
+async function quitarSplash() {
+  const b = $('boot'); if (splashFuera || b.hidden) return; splashFuera = true;
+  const espera = 1100 - (Date.now() - T_INICIO); if (espera > 0) await new Promise(r => setTimeout(r, espera));
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { b.classList.add('abre'); await new Promise(r => setTimeout(r, 320)); b.hidden = true; return; }
+  b.classList.add('recoge'); await new Promise(r => setTimeout(r, 560));
+  b.classList.add('abre'); await new Promise(r => setTimeout(r, 760));
+  b.hidden = true; b.className = 'load';
 }
 
 /* render */
 let fotoTimer = null, restTimer = null;
 function render() {
   if (!YO || !ME) return;
-  $('boot').hidden = true; $('scr').hidden = false; $('tabs').hidden = false; $('scr').style.paddingBottom = '';
+  $('scr').hidden = false; $('tabs').hidden = false; $('scr').style.paddingBottom = '';
   nav();
   let h;
   if (st.sheet) h = { ficha: () => vFicha(st.exn), buscar: vBuscar, crear: vCrear, perfil: vPerfil }[st.sheet]();
@@ -771,16 +786,16 @@ document.addEventListener('submit', async ev => {
 async function boot(user) {
   if (YO === user.id && ME) return;
   YO = user.id; st.who = YO;
-  $('scr').hidden = true; $('tabs').hidden = true; $('boot').hidden = false;
+  if ($('boot').hidden) mostrarSplash();
   try {
     if (!catalogoListo) await cargarCatalogo(); else await recargarPlantillas();
     await cargarUsuario(); ultimaCarga = Date.now();
     const l = lsGet(LIVE_KEY()); if (l && l.items) st.live = l;
-    render();
+    render(); quitarSplash();
     guardarLogros().then(nl => { if (nl.length) render(); });
   } catch (e) {
     console.error(e);
-    $('boot').innerHTML = `<i></i><span>No se pudo cargar VYNT. Revisa tu conexión.</span><button class="btn" type="button" onclick="location.reload()">Reintentar</button>`;
+    $('boot').innerHTML = `<div class="marca" aria-hidden="true"><span class="sv">V</span><span class="sl">Y</span><span class="sl">N</span><span class="sl">T</span></div><span class="txt">No se pudo cargar VYNT. Revisa tu conexión.</span><button class="btn" type="button" onclick="location.reload()">Reintentar</button>`;
   }
 }
 // al volver a la app, recarga los datos de usuario y amigos (por si alguien ha cambiado algo)

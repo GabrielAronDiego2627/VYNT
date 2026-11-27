@@ -137,16 +137,29 @@ select.sel{min-height:40px;background:var(--s2);border:1px solid var(--ln2);padd
 .msg.e{color:var(--rojo)}.msg.ok{color:var(--lima)}
 .link{background:none;border:0;color:var(--lima);font-weight:600;padding:8px 0;min-height:40px}
 [hidden]{display:none!important}
-.load{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:var(--mut)}
-.load i{width:44px;height:6px;background:var(--lima);animation:pulse 1s infinite alternate}
+/* pantalla de carga: VYNT se recoge en la V y la V se abre hacia la app */
+.load{position:absolute;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;color:var(--mut);background-color:var(--bg);overflow:hidden}
+.load .marca{display:flex;font:700 clamp(72px,24vw,116px)/.9 "Barlow Condensed",sans-serif;color:var(--lima);letter-spacing:.01em;animation:entra .5s cubic-bezier(.2,.7,.2,1) both}
+.load .marca span{display:inline-block}
+.load .sv{transform-origin:50% 38%;will-change:transform}
+.load .sl{max-width:.7em;overflow:hidden;transition:max-width .4s cubic-bezier(.6,0,.25,1),opacity .28s,transform .4s cubic-bezier(.6,0,.25,1)}
+.load .sl:nth-child(4){transition-delay:0s}.load .sl:nth-child(3){transition-delay:.06s}.load .sl:nth-child(2){transition-delay:.12s}
+.load .linea{width:46px;height:3px;background:var(--lima);animation:pulse .9s infinite alternate;transition:opacity .2s}
+.load .txt{font-size:14px}
+.load.recoge .sl{max-width:0;opacity:0;transform:translateX(-.35em)}
+.load.recoge .linea{opacity:0}
+.load.abre{background-color:rgba(7,9,8,0);transition:background-color .38s ease-in .3s}
+.load.abre .sv{transform:scale(46);transition:transform .7s cubic-bezier(.72,0,.86,.24)}
+@keyframes entra{from{opacity:0;transform:translateY(8px);letter-spacing:.12em}}
 @keyframes pulse{from{opacity:.25;transform:scaleX(.4)}}
+@media (prefers-reduced-motion:reduce){.load .marca{animation:none}.load .sl,.load .sv{transition:none}.load.abre{transition:background-color .3s}}
 .badge{display:inline-block;min-width:20px;padding:0 6px;background:var(--lima);color:var(--onl);font:700 12px/18px "Barlow Condensed",sans-serif;text-align:center;margin-left:4px}
 </style></head>
 <body>
 <div class="phone" id="app">
-  <div class="load" id="boot"><i></i><span>Cargando VYNT…</span></div>
+  <div class="load" id="boot" role="status" aria-label="Cargando VYNT"><div class="marca" aria-hidden="true"><span class="sv">V</span><span class="sl">Y</span><span class="sl">N</span><span class="sl">T</span></div><i class="linea"></i></div>
   <div class="scr" id="scr" hidden></div>
   <nav class="tabs" id="tabs" aria-label="Secciones" hidden></nav>
 </div>
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=7"></script>
 </body></html>
