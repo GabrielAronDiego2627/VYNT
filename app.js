@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js';
+import { FORMAS } from './formas.js?v=3';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -713,7 +713,7 @@ async function boot(user) {
   $('scr').hidden = true; $('tabs').hidden = true; $('boot').hidden = false;
   try {
     if (!catalogoListo) await cargarCatalogo(); else await recargarPlantillas();
-    await cargarUsuario();
+    await cargarUsuario(); ultimaCarga = Date.now();
     const l = lsGet(LIVE_KEY()); if (l && l.items) st.live = l;
     render();
     guardarLogros().then(nl => { if (nl.length) render(); });
@@ -722,6 +722,13 @@ async function boot(user) {
     $('boot').innerHTML = `<i></i><span>No se pudo cargar VYNT. Revisa tu conexión.</span><button class="btn" type="button" onclick="location.reload()">Reintentar</button>`;
   }
 }
+// al volver a la app, recarga los datos de usuario y amigos (por si alguien ha cambiado algo)
+let ultimaCarga = Date.now();
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !YO || !ME || st.busy || Date.now() - ultimaCarga < 30000) return;
+  ultimaCarga = Date.now();
+  try { await cargarUsuario(); if (!document.activeElement?.matches('input,select')) { const y = $('scr').scrollTop; render(); $('scr').scrollTop = y; } } catch (e) { console.error(e); }
+});
 sb.auth.onAuthStateChange((event, session) => {
   if (event === 'PASSWORD_RECOVERY') { st.auth = 'reset'; YO = null; ME = null; setTimeout(showAuth); return; }
   if (session && session.user) { if (st.auth !== 'reset') setTimeout(() => boot(session.user)); }
