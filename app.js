@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js?v=5';
+import { FORMAS } from './formas.js?v=6';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -31,6 +31,7 @@ const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localSt
 
 /* datos */
 let EX = {}, EXID = {}, R = [], GR = {}, M2G = {}, MUS = [], LOGROS = [], VYNT_PL = [];
+let OBTF = {};
 let YO = null, ME = null, U = [], UID = {}, S = [], MINE = [], LOGRA = {}, OBT = new Set(), AM = [], LIKES_DADOS = 0;
 const COLORES = ['#5AA9E6', '#FF8A3D', '#9B7BFF', '#6FBF8A', '#F2C230', '#FF9E9E', '#8A9490'];
 let catalogoListo = false;
@@ -120,8 +121,9 @@ async function cargarUsuario() {
   if (amIds.length) ok(await sb.from('logra').select('*').in('id_usuario', amIds)).forEach(l => {
     const x = EXID[l.id_ejercicio]; if (!x) return; (LOGRA[l.id_usuario] ||= {})[x.n] = { v: +l.mejor_peso_kg, t: Date.parse(l.fecha_marca) };
   });
-  const obt = ok(await sb.from('obtiene').select('id_logro').eq('id_usuario', YO));
-  OBT = new Set(obt.map(o => (LOGROS.find(l => l.id === o.id_logro) || {}).n).filter(Boolean));
+  const obt = ok(await sb.from('obtiene').select('id_logro,fecha').eq('id_usuario', YO));
+  OBTF = {}; obt.forEach(o => { const l = LOGROS.find(x => x.id === o.id_logro); if (l) OBTF[l.n] = o.fecha; });
+  OBT = new Set(Object.keys(OBTF));
   const { count } = await sb.from('le_gusta').select('id_sesion', { count: 'exact', head: true }).eq('id_usuario', YO);
   LIKES_DADOS = count || 0;
 }
@@ -155,11 +157,45 @@ function weekVol(uid) {
   }));
   return v;
 }
+function superoMarca(uid) { // ¿ha superado alguna vez una marca anterior?
+  const best = {};
+  for (const s of S.filter(x => x.u === uid).sort((a, b) => a.t - b.t)) {
+    let sup = false; const nb = {};
+    s.series.forEach(x => { if (x.tipo !== 'E') return; const v = e1(x.w, x.r); if (best[x.ex] != null && v > best[x.ex]) sup = true; nb[x.ex] = Math.max(nb[x.ex] || 0, v); });
+    if (sup) return true;
+    Object.entries(nb).forEach(([k, v]) => best[k] = Math.max(best[k] || 0, v));
+  }
+  return false;
+}
+function progresoLogro(n) { // { v, max, txt } para la barra del panel
+  const ss = S.filter(s => s.u === YO), r = ranks(YO), tot = ss.reduce((a, s) => a + vol(s), 0);
+  const maxMus = Math.max(0, ...Object.values(r.mus));
+  const t = v => (v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+  const ses = m => ({ v: ss.length, max: m, txt: `${Math.min(ss.length, m)} / ${m} sesiones` });
+  const rango = o => ({ v: maxMus, max: o, txt: `Tu mejor músculo: ${R[maxMus].n} · objetivo: ${R[o].n}` });
+  switch (n) {
+    case 'Primer paso': return ses(1);
+    case 'Constancia': return ses(10);
+    case 'Disciplina': return ses(50);
+    case 'Centenario': return ses(100);
+    case 'Primera tonelada': { const b = Math.max(0, ...ss.map(vol)); return { v: b, max: 1000, txt: `Tu mejor sesión: ${fmt(b)} / 1.000 kg` }; }
+    case 'Diez toneladas': return { v: tot, max: 1e4, txt: `${t(Math.min(tot, 1e4))} / 10 toneladas` };
+    case 'Cien toneladas': return { v: tot, max: 1e5, txt: `${t(Math.min(tot, 1e5))} / 100 toneladas` };
+    case 'Nuevo récord': return { v: superoMarca(YO) ? 1 : 0, max: 1, txt: 'Repite un ejercicio y mueve más que tu mejor marca' };
+    case 'Sube de rango': return rango(1);
+    case 'Atleta completo': { const k = Object.values(r.grp).filter(o => o >= 2).length, g = Object.keys(GR).length; return { v: k, max: g, txt: `${k} / ${g} grupos en Intermedio o más` }; }
+    case 'Nivel Pro': return rango(5);
+    case 'VYNT': return rango(6);
+    case 'Equipo': return { v: U.length - 1, max: 1, txt: `${U.length - 1} / 1 amigos` };
+    case 'Animador': return { v: LIKES_DADOS, max: 50, txt: `${Math.min(LIKES_DADOS, 50)} / 50 me gusta dados` };
+  }
+  return null;
+}
 function logrosDe(uid) {
   const ss = S.filter(s => s.u === uid), r = ranks(uid), tot = ss.reduce((a, s) => a + vol(s), 0), got = new Set();
   if (ss.length >= 1) got.add('Primer paso'); if (ss.length >= 10) got.add('Constancia'); if (ss.length >= 50) got.add('Disciplina'); if (ss.length >= 100) got.add('Centenario');
   if (ss.some(s => vol(s) >= 1000)) got.add('Primera tonelada'); if (tot >= 1e4) got.add('Diez toneladas'); if (tot >= 1e5) got.add('Cien toneladas');
-  if (Object.keys(r.ex).length) got.add('Nuevo récord'); if (Object.values(r.mus).some(o => o >= 2)) got.add('Sube de rango');
+  if (superoMarca(uid)) got.add('Nuevo récord'); if (Object.values(r.mus).some(o => o >= 1)) got.add('Sube de rango');
   if (Object.values(r.grp).every(o => o >= 2)) got.add('Atleta completo'); if (Object.values(r.mus).some(o => o >= 5)) got.add('Nivel Pro'); if (Object.values(r.mus).some(o => o >= 6)) got.add('VYNT');
   if (U.length > 1) got.add('Equipo'); if (LIKES_DADOS >= 50) got.add('Animador');
   return got;
@@ -169,7 +205,7 @@ async function guardarLogros() { // guarda en OBTIENE los logros nuevos
   if (!nuevos.length) return [];
   const rows = nuevos.map(n => LOGROS.find(l => l.n === n)).filter(Boolean).map(l => ({ id_usuario: YO, id_logro: l.id }));
   const { error } = await sb.from('obtiene').upsert(rows, { onConflict: 'id_usuario,id_logro', ignoreDuplicates: true });
-  if (!error) nuevos.forEach(n => OBT.add(n));
+  if (!error) nuevos.forEach(n => { OBT.add(n); OBTF[n] = ymd(new Date()); });
   return nuevos;
 }
 
@@ -231,7 +267,7 @@ function vInicio() {
   ${olv.length ? `<p class="small" style="margin:10px 0 0"><b style="color:var(--oro)">Olvidados:</b> <span class="mut">${olv.map(esc).join(', ')}</span></p>` : ''}</section>
   <button class="btn pri full" type="button" data-go="entrenar" style="margin-bottom:12px">${st.live ? 'Volver a la sesión' : 'Empezar entrenamiento'}</button>
   <section class="card"><h2>Últimos récords</h2>${recs.length ? `<div class="list">${recs.map(([n, o]) => { const x = r.ex[n]; return `<button class="item" type="button" data-ex="${esc(n)}"><span class="grow"><h3>${esc(n)}</h3><span class="small mut">${esc(fdate(o.t))} · 1RM estimado ${kg(o.v)}</span></span>${rk(x.o)}</button>`; }).join('')}</div>` : '<div class="empty">Aún no hay récords recientes.</div>'}</section>
-  <section class="card"><div class="row between"><h2>Logros</h2><span class="eyebrow">${OBT.size}/${LOGROS.length}</span></div><div class="grid3">${LOGROS.map(l => `<div class="logro${OBT.has(l.n) ? '' : ' off'}" title="${esc(l.d)}"><span class="ic" aria-hidden="true">${l.i}</span><b>${esc(l.n)}</b></div>`).join('')}</div></section>`;
+  <section class="card"><div class="row between"><h2>Logros</h2><span class="eyebrow">${OBT.size}/${LOGROS.length}</span></div><div class="grid3">${LOGROS.map(l => `<button type="button" class="logro${OBT.has(l.n) ? '' : ' off'}" data-logro="${esc(l.n)}" aria-label="${esc(l.n)}: ${OBT.has(l.n) ? 'conseguido' : 'pendiente'}. Ver cómo se consigue"><span class="ic" aria-hidden="true">${l.i}</span><b>${esc(l.n)}</b></button>`).join('')}</div></section>`;
 }
 
 /* RANGOS */
@@ -418,6 +454,19 @@ function vCeleb() {
   ${c.nl.length ? `<section class="card" style="margin:0"><h2>Logros nuevos</h2>${c.nl.map(n => { const l = LOGROS.find(x => x.n === n); return l ? `<p style="margin:4px 0">${l.i} <b>${esc(n)}</b> · <span class="mut">${esc(l.d)}</span></p>` : ''; }).join('')}</section>` : ''}
   <button class="btn pri full" type="button" data-celeb>Continuar</button></div>`;
 }
+function vLogro(n) {
+  const l = LOGROS.find(x => x.n === n); if (!l) return '';
+  const got = OBT.has(n), p = progresoLogro(n);
+  const pct = p ? Math.max(got ? 100 : 3, Math.min(100, Math.round(p.v / p.max * 100))) : 0;
+  const fecha = OBTF[n] ? new Date(OBTF[n] + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return `<div class="velo" data-cerrarlogro></div><div class="hoja cut" role="dialog" aria-modal="true" aria-labelledby="lgt" id="hoja">
+   <span class="asa" aria-hidden="true"></span>
+   <div class="row" style="gap:14px;align-items:center"><span class="lgic${got ? '' : ' off'}" aria-hidden="true">${l.i}</span>
+   <div><div class="eyebrow" style="color:${got ? 'var(--lima)' : 'var(--mut)'}">${got ? 'Conseguido' : 'Pendiente'}</div><h2 id="lgt" style="margin:2px 0 0">${esc(n)}</h2></div></div>
+   <p style="margin:14px 0 4px;font-weight:600">Cómo se consigue</p><p class="mut" style="margin:0 0 14px">${esc(l.d)}</p>
+   ${got ? `<p class="small" style="margin:0 0 14px">🏅 Lo conseguiste${fecha ? ' el ' + esc(fecha) : ''}.</p>` : p ? `<span class="bar" style="height:10px"><i style="width:${pct}%;background:var(--lima)"></i></span><p class="small mut" style="margin:6px 0 14px">${esc(p.txt)}</p>` : ''}
+   <button class="btn full" type="button" data-cerrarlogro>Cerrar</button></div>`;
+}
 function vConfirm() {
   return `<div class="celeb" role="dialog" aria-modal="true" aria-label="Descartar sesión"><div class="eyebrow" style="color:var(--rojo)">Atención</div><div class="bigrank" style="font-size:40px">¿Descartar la sesión?</div>
   <p class="mut" style="margin:0">Las series que has marcado no se guardarán.</p>
@@ -592,9 +641,17 @@ function render() {
   if (st.rest) $('app').insertAdjacentHTML('beforeend', `<div class="rest" role="status"><b id="rt">${fmtT(st.rest.left)}</b><span style="flex:1">Descanso · ${esc(st.rest.n)}</span><button class="btn sm" type="button" data-rest="15">+15 s</button><button class="btn sm" type="button" data-rest="0">Saltar</button></div>`);
   if (st.celeb) $('app').insertAdjacentHTML('beforeend', vCeleb());
   if (st.confirm) $('app').insertAdjacentHTML('beforeend', vConfirm());
+  document.querySelectorAll('.velo,.hoja').forEach(x => x.remove());
+  if (st.logro) { $('app').insertAdjacentHTML('beforeend', vLogro(st.logro)); const h = $('hoja'); if (h) { h.querySelector('[data-cerrarlogro].btn').focus({ preventScroll: true }); swipeCerrar(h); } }
   clearInterval(fotoTimer); const f = document.querySelector('.foto');
   if (f) { let k = 0; fotoTimer = setInterval(() => { k = 1 - k; const im = f.querySelectorAll('img'); im[1].style.opacity = k; f.querySelector('.paso').textContent = k ? 'Final' : 'Inicio'; }, 1200); }
   if (st.live) guardarLive();
+}
+function swipeCerrar(h) {
+  let y0 = null;
+  h.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  h.addEventListener('touchmove', e => { if (y0 == null) return; const dy = e.touches[0].clientY - y0; if (dy > 0) h.style.transform = `translateY(${dy}px)`; }, { passive: true });
+  h.addEventListener('touchend', e => { const dy = (e.changedTouches[0].clientY - (y0 ?? 0)); y0 = null; if (dy > 70) { st.logro = null; render(); } else h.style.transform = ''; });
 }
 function renderKeep(id) { const el = $(id); const pos = el ? el.selectionStart : null; render(); const n = $(id); if (n && pos != null) { n.focus(); try { n.setSelectionRange(pos, pos); } catch { } } }
 const fmtT = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -613,10 +670,12 @@ function toast(t) { document.querySelectorAll('.toast').forEach(x => x.remove())
 
 /* eventos */
 document.addEventListener('click', async ev => {
-  const b = ev.target.closest('button,[data-m]'); if (!b) return; const d = b.dataset;
+  const b = ev.target.closest('button,[data-m],[data-cerrarlogro]'); if (!b) return; const d = b.dataset;
   if (d.auth) { st.auth = d.auth; showAuth(); return; }
   if (!YO) return;
-  if (d.tab) { go(d.tab); return; }
+  if (d.logro) { st.logro = d.logro; render(); return; }
+  if (d.cerrarlogro !== undefined) { st.logro = null; render(); return; }
+  if (d.tab) { st.logro = null; go(d.tab); return; }
   if (d.go) { go(d.go); return; }
   if (d.who) { st.who = d.who; st.mus = null; render(); return; }
   if (d.m && b.closest('.tap')) { st.mus = st.mus === d.m ? null : d.m; render(); return; }
@@ -737,3 +796,4 @@ sb.auth.onAuthStateChange((event, session) => {
   else { YO = null; ME = null; S = []; U = []; st.live = null; st.sheet = null; st.tab = 'inicio'; if (st.auth === 'sent') st.auth = 'in'; setTimeout(showAuth); }
 });
 setInterval(() => { if (st.live && !st.sheet && st.tab === 'entrenar' && !document.activeElement?.matches('input,select')) { const e = document.querySelector('.top .eyebrow'); if (e) e.textContent = `En curso · ${Math.floor((Date.now() - st.live.t0) / 60000)} min`; } }, 30000);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && st.logro) { st.logro = null; render(); } });

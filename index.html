@@ -108,7 +108,15 @@ select.sel{min-height:40px;background:var(--s2);border:1px solid var(--ln2);padd
 @keyframes tin{from{transform:translateY(-20px);opacity:0}}
 .celeb{position:absolute;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;justify-content:center;padding:24px;gap:14px;overflow-y:auto}
 .bigrank{font:700 54px/1 "Barlow Condensed",sans-serif;text-transform:uppercase}
-.logro{background:var(--s2);padding:10px;text-align:center;border:1px solid var(--ln)}
+.logro{background:var(--s2);padding:10px;text-align:center;border:1px solid var(--ln);color:inherit;font:inherit;width:100%;cursor:pointer}
+.logro:active{transform:scale(.97)}
+.velo{position:absolute;inset:0;z-index:40;background:rgba(3,5,4,.72);animation:fade .18s ease-out}
+.hoja{position:absolute;left:0;right:0;bottom:0;z-index:41;background:var(--s1);border-top:2px solid var(--lima);padding:12px 20px calc(20px + env(safe-area-inset-bottom));animation:sube .22s ease-out;transition:transform .15s}
+.hoja .asa{display:block;width:44px;height:4px;background:var(--ln2);margin:0 auto 14px}
+.lgic{font-size:40px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--s2);border:1px solid var(--ln2);flex:none}
+.lgic.off{filter:grayscale(1);opacity:.45}
+@keyframes sube{from{transform:translateY(100%)}}@keyframes fade{from{opacity:0}}
+@media (prefers-reduced-motion:reduce){.velo,.hoja{animation:none}}
 .logro .ic{font-size:24px;display:block;margin-bottom:4px}
 .logro b{display:block;font-size:13px;line-height:1.2}
 .logro.off{opacity:.35;filter:grayscale(1)}
@@ -140,5 +148,5 @@ select.sel{min-height:40px;background:var(--s2);border:1px solid var(--ln2);padd
   <div class="scr" id="scr" hidden></div>
   <nav class="tabs" id="tabs" aria-label="Secciones" hidden></nav>
 </div>
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body></html>
