@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js?v=3';
+import { FORMAS } from './formas.js?v=4';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -362,13 +362,14 @@ function vLive() {
   ${L.items.length ? '' : '<div class="empty" style="margin-bottom:12px">Añade el primer ejercicio para empezar.</div>'}
   ${L.items.map((it, i) => `<section class="card cut"><div class="row between"><button class="back" type="button" data-ex="${esc(it.n)}" style="color:var(--ink);font-size:17px">${esc(it.n)} ›</button><button class="btn sm ghost" type="button" data-rmit="${i}" aria-label="Quitar ${esc(it.n)}">✕</button></div>
    <p class="small mut" style="margin:0 0 8px">Anterior: ${esc(it.prev)}${it.best ? ` · Récord ${kg(it.best)}` : ''} · Descanso ${it.d}s</p>
-   <div class="setrow sethead"><span>#</span><span>Tipo</span><span>Kg</span><span>Reps</span><span>RPE</span><span></span></div>
+   <div class="setrow sethead"><span>#</span><span>Tipo</span><span>Kg</span><span>Reps</span><span>RPE</span><span></span><span></span></div>
    ${it.sets.map((s, j) => `<div class="setrow${s.done ? ' done' : ''}"><b>${j + 1}</b>
     <button class="tipo${s.tipo === 'C' ? ' c' : ''}" type="button" data-tipo="${i}:${j}" aria-label="Tipo de serie: ${s.tipo === 'C' ? 'calentamiento' : 'efectiva'}">${s.tipo === 'C' ? 'CAL' : 'EFE'}</button>
     <input class="num" type="number" inputmode="decimal" step="2.5" min="0" data-w="${i}:${j}" value="${s.w}" aria-label="Kilos serie ${j + 1}">
     <input class="num" type="number" inputmode="numeric" min="1" data-r="${i}:${j}" value="${s.r}" aria-label="Repeticiones serie ${j + 1}">
     <select class="sel" data-rpe="${i}:${j}" aria-label="RPE serie ${j + 1}"><option value="">–</option>${[6, 7, 8, 9, 10].map(v => `<option ${String(s.rpe) === String(v) ? 'selected' : ''}>${v}</option>`).join('')}</select>
-    <button class="chk" type="button" data-done="${i}:${j}" aria-pressed="${s.done}" aria-label="Serie ${j + 1} hecha">✓</button></div>`).join('')}
+    <button class="chk" type="button" data-done="${i}:${j}" aria-pressed="${s.done}" aria-label="Serie ${j + 1} hecha">✓</button>
+    <button class="delset" type="button" data-delset="${i}:${j}" aria-label="Quitar serie ${j + 1}">✕</button></div>`).join('')}
    <button class="btn sm ghost" type="button" data-addset="${i}">+ Serie</button></section>`).join('')}
   <button class="btn full" type="button" data-open="pickLive" style="margin-bottom:10px">+ Añadir ejercicio</button>
   <p class="small mut">CAL = calentamiento: no cuenta para récords ni rangos. Las series sin marcar con ✓ no se guardan.</p>
@@ -648,6 +649,7 @@ document.addEventListener('click', async ev => {
   if (d.libre !== undefined) { startLive(null); return; }
   if (d.tipo) { const [i, j] = ij(d.tipo); const s = st.live.items[i].sets[j]; s.tipo = s.tipo === 'C' ? 'E' : 'C'; render(); return; }
   if (d.addset !== undefined) { const it = st.live.items[+d.addset]; const l = it.sets[it.sets.length - 1] || { w: 0, r: 10 }; it.sets.push({ w: l.w, r: l.r, tipo: 'E', rpe: '', done: false }); render(); return; }
+  if (d.delset) { const [i, j] = ij(d.delset); st.live.items[i].sets.splice(j, 1); render(); return; }
   if (d.rmit !== undefined) { st.live.items.splice(+d.rmit, 1); render(); return; }
   if (d.done) {
     const [i, j] = ij(d.done); const it = st.live.items[i], s = it.sets[j]; s.done = !s.done;

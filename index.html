@@ -90,12 +90,16 @@ ol.pasos li{margin-bottom:4px}
 input.num{width:100%;min-height:40px;background:var(--s2);border:1px solid var(--ln2);text-align:center;font-weight:600;font-size:16px;border-radius:0}
 input.txt{width:100%;min-height:44px;background:var(--s2);border:1px solid var(--ln2);padding:0 12px;font-size:16px;border-radius:0}
 select.sel{min-height:40px;background:var(--s2);border:1px solid var(--ln2);padding:0 6px;font-size:15px;border-radius:0}
-.setrow{display:grid;grid-template-columns:30px 46px minmax(0,1fr) minmax(0,1fr) 56px 44px;gap:6px;align-items:center;margin-bottom:6px}
+.setrow{display:grid;grid-template-columns:16px 40px minmax(0,1fr) minmax(0,1fr) 46px 38px 22px;gap:5px;align-items:center;margin-bottom:6px}
 .sethead{font:600 11px "Barlow Condensed",sans-serif;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
 .tipo{min-height:40px;border:1px solid var(--ln2);background:var(--s2);font:700 13px "Barlow Condensed",sans-serif;letter-spacing:.06em}
 .tipo.c{color:var(--oro);border-color:rgba(242,194,48,.45)}
+.delset{min-height:40px;border:0;background:none;color:var(--mut);font-size:15px;padding:0}
+.delset:hover,.delset:focus-visible{color:var(--rojo)}
 .chk{min-height:40px;border:1px solid var(--ln2);background:var(--s2)}
 .chk[aria-pressed=true]{background:var(--lima);border-color:var(--lima);color:var(--onl)}
+.setrow .num{padding-left:4px;padding-right:4px;text-align:center;min-width:0}
+.setrow .sel{padding-left:4px;padding-right:0;min-width:0}
 .setrow.done input,.setrow.done select{background:var(--verde2);border-color:var(--verde)}
 .rest{position:absolute;left:0;right:0;bottom:62px;z-index:11;background:var(--lima);color:var(--onl);display:flex;align-items:center;gap:10px;padding:10px 16px;font-weight:600}
 .rest b{font:700 30px/1 "Barlow Condensed",sans-serif;min-width:70px}
@@ -136,5 +140,5 @@ select.sel{min-height:40px;background:var(--s2);border:1px solid var(--ln2);padd
   <div class="scr" id="scr" hidden></div>
   <nav class="tabs" id="tabs" aria-label="Secciones" hidden></nav>
 </div>
-<script type="module" src="app.js?v=3"></script>
+<script type="module" src="app.js?v=4"></script>
 </body></html>
