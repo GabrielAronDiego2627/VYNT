@@ -81,6 +81,7 @@
         "Hora de inicio",
         "Duración (min)",
         "Volumen total (kg)",
+        "Peso corporal (kg)",
         "Id usuario",
         "Id plantilla"
       ],

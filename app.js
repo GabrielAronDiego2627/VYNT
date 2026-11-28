@@ -1,6 +1,6 @@
 // VYNT · app conectada a Supabase
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { FORMAS } from './formas.js?v=7';
+import { FORMAS } from './formas.js?v=8';
 
 const SUPABASE_URL = 'https://hwcttyychoedsvvuktqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_T49Ep-BBFfrHg4FgT_dA4w_8SjQNG24'; // clave pública: los datos los protegen las políticas RLS
@@ -112,14 +112,14 @@ async function cargarUsuario() {
   const lk = {}; likes.forEach(l => (lk[l.id_sesion] ||= new Set()).add(l.id_usuario));
   S = ses.map(s => ({
     id: s.id_sesion, u: s.id_usuario, n: s.nombre, pl: s.id_plantilla,
-    t: new Date(`${s.fecha}T${s.hora_inicio || '12:00:00'}`).getTime(), dur: s.duracion_min || 0,
+    t: new Date(`${s.fecha}T${s.hora_inicio || '12:00:00'}`).getTime(), dur: s.duracion_min || 0, bw: s.peso_corporal_kg != null ? +s.peso_corporal_kg : null,
     series: (bySes[s.id_sesion] || []).filter(x => EXID[x.id_ejercicio]).map(x => ({ ex: EXID[x.id_ejercicio].n, w: +x.peso_kg, r: x.repeticiones, tipo: x.tipo === 'Calentamiento' ? 'C' : 'E', rpe: x.rpe })),
     likes: lk[s.id_sesion] || new Set()
   })).sort((a, b) => a.t - b.t);
-  // marcas de los amigos (LOGRA) y mis logros (OBTIENE)
+  // rangos de los amigos (los calcula Supabase con su peso y edad de cada sesión) y mis logros (OBTIENE)
   LOGRA = {};
-  if (amIds.length) ok(await sb.from('logra').select('*').in('id_usuario', amIds)).forEach(l => {
-    const x = EXID[l.id_ejercicio]; if (!x) return; (LOGRA[l.id_usuario] ||= {})[x.n] = { v: +l.mejor_peso_kg, t: Date.parse(l.fecha_marca) };
+  if (amIds.length) ok(await sb.from('rango_ejercicio_usuario').select('*').in('id_usuario', amIds)).forEach(l => {
+    const x = EXID[l.id_ejercicio]; if (!x) return; (LOGRA[l.id_usuario] ||= {})[x.n] = { v: +l.mejor_peso_kg, aj: +l.mejor_ajustado_kg, o: l.orden - 1, next: +l.kg_para_siguiente || 0 };
   });
   const obt = ok(await sb.from('obtiene').select('id_logro,fecha').eq('id_usuario', YO));
   OBTF = {}; obt.forEach(o => { const l = LOGROS.find(x => x.id === o.id_logro); if (l) OBTF[l.n] = o.fecha; });
@@ -129,20 +129,50 @@ async function cargarUsuario() {
 }
 
 /* rangos */
+// Los mínimos de EXIGE son los de una persona de referencia (hombre 80 kg, mujer 65 kg, 23-40 años).
+// Cada marca se pasa a peso equivalente de referencia: escalado alométrico (exponente 0,67) y coeficiente de edad.
+// Es el mismo cálculo que hacen las vistas de Supabase.
 function umbrales(ex, g) { return g === 'Mujer' ? ex.um : ex.uh; }
-function rankOf(ex, g, v) { const u = umbrales(ex, g); let o = 0; u.forEach((t, i) => { if (v >= t) o = i; }); return o; }
+function rankOf(ex, g, aj) { const u = umbrales(ex, g); let o = 0; u.forEach((t, i) => { if (aj >= t) o = i; }); return o; }
+const pesoRef = g => g === 'Mujer' ? 65 : 80;
+const EDADES = [[14, 1.23], [15, 1.18], [16, 1.13], [17, 1.08], [18, 1.06], [19, 1.04], [20, 1.03], [21, 1.02], [22, 1.01], [23, 1], [40, 1], [45, 1.05], [50, 1.13], [55, 1.23], [60, 1.34], [65, 1.47], [70, 1.65], [75, 1.86], [80, 2.13]];
+function coefEdad(e) {
+  if (e == null || isNaN(e)) return 1; const v = Math.min(80, Math.max(14, e));
+  for (let i = 0; i < EDADES.length - 1; i++) { const [a, ca] = EDADES[i], [b, cb] = EDADES[i + 1]; if (v >= a && v < b) return ca + (cb - ca) * (v - a) / (b - a); }
+  return EDADES[EDADES.length - 1][1];
+}
+function edadEn(nac, t) { if (!nac) return null; const n = new Date(nac + 'T12:00:00'), d = new Date(t); let e = d.getFullYear() - n.getFullYear(); if (d.getMonth() < n.getMonth() || (d.getMonth() === n.getMonth() && d.getDate() < n.getDate())) e--; return e; }
+const factor = (g, bw, edad) => (bw > 0 ? Math.pow(pesoRef(g) / bw, 0.67) : 1) * coefEdad(edad);
+const corporal = ex => ex.eq === 'Peso corporal';
+function ajustar(v, ex, g, bw, edad) { const f = factor(g, bw, edad); return Math.max(0, corporal(ex) ? ((bw > 0 ? bw : pesoRef(g)) + v) * f - pesoRef(g) : v * f); }
+const factorHoy = () => factor(ME.genero, +ME.peso_corporal_kg || null, edadEn(ME.fecha_nacimiento, Date.now()));
+function umbralesMios(ex) { // mínimos de cada rango ya ajustados a mi peso y edad de hoy
+  const f = factorHoy(), bw = +ME.peso_corporal_kg || pesoRef(ME.genero);
+  return umbrales(ex, ME.genero).map((t, i) => i === 0 ? 0 : Math.max(0, corporal(ex) ? (pesoRef(ME.genero) + t) / f - bw : t / f));
+}
 const vol = s => s.series.filter(x => x.tipo === 'E').reduce((a, x) => a + x.w * x.r, 0);
 function marks(uid, before) {
   if (uid !== YO) return LOGRA[uid] || {};
   const m = {};
-  S.filter(s => s.u === uid && (!before || s.t < before)).forEach(s => s.series.forEach(x => {
-    if (x.tipo !== 'E') return; const v = e1(x.w, x.r); if (!m[x.ex] || v > m[x.ex].v) m[x.ex] = { v, t: s.t };
-  }));
+  S.filter(s => s.u === uid && (!before || s.t < before)).forEach(s => {
+    const bw = s.bw ?? (+ME.peso_corporal_kg || null), edad = edadEn(ME.fecha_nacimiento, s.t);
+    s.series.forEach(x => {
+      if (x.tipo !== 'E' || !EX[x.ex]) return; const v = e1(x.w, x.r), aj = ajustar(v, EX[x.ex], ME.genero, bw, edad);
+      const o = m[x.ex] ||= { v: 0, aj: -1, t: s.t };
+      if (v > o.v) { o.v = v; o.t = s.t; }
+      if (aj > o.aj) o.aj = aj;
+    });
+  });
   return m;
 }
 function ranks(uid) {
   const u = UID[uid], mk = marks(uid); const ex = {}, mus = {}, grp = {};
-  Object.entries(mk).forEach(([n, o]) => { const e = EX[n]; if (!e) return; const ord = rankOf(e, u.g, o.v); const t = umbrales(e, u.g); ex[n] = { v: o.v, o: ord, next: ord < R.length - 1 ? t[ord + 1] - o.v : 0 }; });
+  Object.entries(mk).forEach(([n, o]) => {
+    const e = EX[n]; if (!e) return;
+    if (uid !== YO) { ex[n] = { v: o.v, aj: o.aj, o: o.o, next: o.next }; return; }
+    const ord = rankOf(e, u.g, o.aj), t = umbrales(e, u.g);
+    ex[n] = { v: o.v, aj: o.aj, o: ord, next: ord < R.length - 1 ? Math.max(0, (t[ord + 1] - o.aj) / factorHoy()) : 0 };
+  });
   MUS.forEach(m => mus[m] = 0);
   Object.entries(ex).forEach(([n, o]) => { const p = EX[n].p; mus[p] = Math.max(mus[p], o.o); });
   Object.entries(GR).forEach(([g, ms]) => { grp[g] = Math.floor(ms.reduce((a, m) => a + mus[m], 0) / ms.length); });
@@ -259,7 +289,8 @@ function vInicio() {
   const total = S.filter(s => s.u === YO).length;
   return `<div class="top"><div><div class="eyebrow">${esc(fdate(Date.now()))}</div><h1>Hola, ${esc(ME.nombre.split(' ')[0])}</h1></div>
    <div class="row">${rk(r.glob, 'Nivel ' + R[r.glob].n)}<button class="av" type="button" data-open="perfil" style="background:var(--lima);border:0" aria-label="Tu perfil">${esc(ME.nombre[0] || 'V')}</button></div></div>
-  ${!total ? `<section class="card cut" style="border-color:var(--verde)"><h2>Bienvenido a VYNT</h2><p class="small mut" style="margin:0 0 10px">Elige una rutina en Entrenar, marca tus series y al terminar verás tu cuerpo pintado y tus primeros rangos.</p>${ME.genero ? '' : '<p class="small" style="margin:0 0 10px;color:var(--oro)">Completa tu perfil con tu género y tu peso: los pesos de cada rango dependen de ello.</p>'}</section>` : ''}
+  ${!total ? `<section class="card cut" style="border-color:var(--verde)"><h2>Bienvenido a VYNT</h2><p class="small mut" style="margin:0 0 10px">Elige una rutina en Entrenar, marca tus series y al terminar verás tu cuerpo pintado y tus primeros rangos.</p></section>` : ''}
+  ${ME.genero && ME.peso_corporal_kg && ME.fecha_nacimiento ? '' : `<button type="button" class="card cut" data-open="perfil" style="display:block;width:100%;text-align:left;border-color:var(--oro);color:inherit;font:inherit"><h2 style="color:var(--oro)">Completa tu perfil</h2><p class="small mut" style="margin:0">Tus rangos se ajustan a tu sexo, tu peso corporal y tu edad. Te falta: ${[!ME.genero && 'género', !ME.peso_corporal_kg && 'peso', !ME.fecha_nacimiento && 'fecha de nacimiento'].filter(Boolean).join(', ')}. Toca aquí para añadirlo.</p></button>`}
   <div class="grid3" style="margin-bottom:12px"><div class="stat"><b>${ss.length}</b><span>sesiones · 7 días</span></div><div class="stat"><b>${(ss.reduce((a, s) => a + vol(s), 0) / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })}<small style="font-size:15px"> t</small></b><span>movidas · 7 días</span></div><div class="stat"><b>${recs.length}</b><span>récords · 14 días</span></div></div>
   <section class="card cut"><div class="row between"><h2>Tu semana</h2><span class="eyebrow">Volumen 7 días</span></div>
   ${body(m => shades[lvl(wv[m])], { label: 'Músculos entrenados esta semana' })}
@@ -284,7 +315,7 @@ function vRangos() {
   <div class="grid2" style="margin-bottom:12px">${Object.keys(GR).map(g => `<div class="stat" style="border-left-color:${R[r.grp[g]].c}"><span>${esc(g)}</span><b style="font-size:19px">${R[r.grp[g]].i} ${esc(R[r.grp[g]].n)}</b></div>`).join('')}</div>
   <section class="card">${sel ? `<div class="row between" style="margin-bottom:6px"><div><div class="eyebrow">${esc(M2G[sel])}</div><h2 style="margin:0">${esc(sel)}</h2></div>${rk(r.mus[sel])}</div><button class="btn sm ghost" type="button" data-mus="" style="margin-bottom:8px">Ver todos los ejercicios</button>` : `<h2>${u.id === YO ? 'Tus ejercicios' : 'Sus ejercicios'}</h2><p class="small mut" style="margin:-4px 0 8px">Toca un músculo del mapa para filtrar.</p>`}
   ${list.length ? `<div class="list">${list.map(([n, o]) => {
-    const t = umbrales(EX[n], u.g); const pct = o.o >= top ? 100 : Math.round((o.v - t[o.o]) / ((t[o.o + 1] - t[o.o]) || 1) * 100);
+    const t = umbrales(EX[n], u.g); const pct = o.o >= top ? 100 : Math.round((o.aj - t[o.o]) / ((t[o.o + 1] - t[o.o]) || 1) * 100);
     return `<button class="item" type="button" data-ex="${esc(n)}" style="flex-wrap:wrap"><span class="grow"><h3>${esc(n)}</h3><span class="small mut">1RM estimado ${kg(o.v)}</span></span>${rk(o.o)}
    <span style="flex-basis:100%"><span class="bar"><i style="width:${Math.max(4, pct)}%;background:${R[Math.min(top, o.o + 1)].c}"></i></span><span class="small mut">${o.o >= top ? 'Rango máximo alcanzado' : `${u.id === YO ? 'Te faltan' : 'Le faltan'} <b style="color:var(--ink)">${kg(o.next)}</b> para ${esc(R[o.o + 1].n)}`}</span></span></button>`;
   }).join('')}</div>` : `<div class="empty">${sel ? 'Sin marcas en este músculo todavía.' : 'Todavía no hay marcas. Termina una sesión para empezar a subir de rango.'}</div>`}</section>`;
@@ -309,7 +340,7 @@ function vFicha(n) {
   const e = EX[n], r = ranks(YO).ex[n];
   const hist = []; S.filter(s => s.u === YO).forEach(s => { let b = 0; s.series.forEach(x => { if (x.ex === n && x.tipo === 'E') b = Math.max(b, e1(x.w, x.r)); }); if (b) hist.push([s.t, b]); });
   const txt = e.d, ix = txt.indexOf('Error típico:'); const pasos = (ix > 0 ? txt.slice(0, ix) : txt).split(/\s?\d\.\s/).filter(x => x.trim());
-  const t = umbrales(e, ME.genero); const top = R.length - 1;
+  const t = umbralesMios(e); const top = R.length - 1;
   return `<button class="back" type="button" data-close>← Volver</button>
   <h1 style="margin:6px 0 8px">${esc(n)}</h1><div style="margin-bottom:10px"><span class="tag">${esc(e.eq)}</span><span class="tag">${esc(e.t)}</span><span class="tag">${esc(M2G[e.p])}</span></div>
   ${e.f ? `<div class="foto"><img src="${esc(fotoSrc(e.f, 0))}" alt="${esc(n)}, posición inicial"><img src="${esc(fotoSrc(e.f, 1))}" alt="${esc(n)}, posición final" style="opacity:0"><span class="paso">Inicio</span></div>` : `<div class="nofoto">Sin foto para este ejercicio</div>`}
@@ -317,7 +348,8 @@ function vFicha(n) {
   <div class="legend" style="margin-top:6px"><span><i class="sq" style="background:var(--rojo)"></i>${esc(e.p)}</span>${e.s.map(m => `<span><i class="sq" style="background:var(--rojo2)"></i>${esc(m)}</span>`).join('')}</div></section>
   <section class="card"><div class="row between"><h2 style="margin:0">Tu marca</h2>${r ? rk(r.o) : ''}</div>
   ${r ? `<p style="margin:6px 0"><b style="font:700 28px 'Barlow Condensed',sans-serif">${kg(r.v)}</b> <span class="mut small">1RM estimado</span></p><p class="small mut" style="margin:0 0 10px">${r.o >= top ? 'Rango máximo' : `Te faltan <b style="color:var(--ink)">${kg(r.next)}</b> para ${esc(R[r.o + 1].n)}`}</p>${chart(hist)}` : '<p class="small mut">Aún no has hecho este ejercicio.</p>'}
-  <div class="row" style="flex-wrap:wrap;gap:4px;margin-top:8px">${t.slice(1).map((v, i) => `<span class="tag" style="border-left:3px solid ${R[i + 1].c}">${esc(R[i + 1].n)} ${kg(v)}</span>`).join('')}</div></section>
+  <p class="small mut" style="margin:10px 0 4px">${corporal(e) ? 'Lastre mínimo' : 'Mínimos'} de cada rango ajustados a ti${ME.peso_corporal_kg ? ` (${kg(+ME.peso_corporal_kg)}` : ' (sin peso en tu perfil'}${ME.fecha_nacimiento ? `, ${edadEn(ME.fecha_nacimiento, Date.now())} años)` : ')'}:</p>
+  <div class="row" style="flex-wrap:wrap;gap:4px">${t.slice(1).map((v, i) => `<span class="tag" style="border-left:3px solid ${R[i + 1].c}">${esc(R[i + 1].n)} ${kg(v)}</span>`).join('')}</div></section>
   <section class="card"><h2>Cómo se hace</h2><ol class="pasos">${pasos.map(p => `<li>${esc(p.trim())}</li>`).join('')}</ol>${ix > 0 ? `<p class="err">${esc(txt.slice(ix))}</p>` : ''}</section>`;
 }
 function chart(h) {
@@ -420,14 +452,14 @@ async function finishLive() {
     const before = ranks(YO), mkB = marks(YO);
     const t0 = new Date(L.t0), dur = Math.max(1, Math.round((Date.now() - L.t0) / 60000));
     const series = []; hechas.forEach(({ it, sets }) => sets.forEach(s => series.push({ ex: it.n, w: +s.w, r: +s.r, tipo: s.tipo, rpe: s.rpe ? +s.rpe : null })));
-    const ses = { n: L.n, t: L.t0, dur, series, likes: new Set(), u: YO };
+    const ses = { n: L.n, t: L.t0, dur, series, likes: new Set(), u: YO, bw: +ME.peso_corporal_kg || null };
     let pl = L.pl;
     if (pl == null) { // sesión libre: al registrarla se registra también su plantilla
       const nombre = `${L.n} ${t0.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
       pl = ok(await sb.from('plantilla').insert({ nombre, id_usuario: YO }).select('id_plantilla').single()).id_plantilla;
       ok(await sb.from('incluye').insert(hechas.map(({ it, sets }, i) => ({ id_plantilla: pl, id_ejercicio: EX[it.n].id, orden: i + 1, series_objetivo: Math.min(10, sets.length), repeticiones_objetivo: Math.max(1, Math.min(50, sets[0].r | 0)), descanso_seg: it.d }))));
     }
-    const row = ok(await sb.from('sesion').insert({ nombre: L.n, fecha: ymd(t0), hora_inicio: hms(t0), duracion_min: dur, volumen_total_kg: Math.round(vol(ses) * 10) / 10, id_usuario: YO, id_plantilla: pl }).select('id_sesion').single());
+    const row = ok(await sb.from('sesion').insert({ nombre: L.n, fecha: ymd(t0), hora_inicio: hms(t0), duracion_min: dur, volumen_total_kg: Math.round(vol(ses) * 10) / 10, peso_corporal_kg: +ME.peso_corporal_kg || null, id_usuario: YO, id_plantilla: pl }).select('id_sesion').single());
     const num = {};
     const rows = series.map(x => ({ id_sesion: row.id_sesion, id_ejercicio: EX[x.ex].id, numero_serie: (num[x.ex] = (num[x.ex] || 0) + 1), peso_kg: x.w, repeticiones: x.r, tipo: x.tipo === 'C' ? 'Calentamiento' : 'Efectiva', rpe: x.rpe }));
     const ins = await sb.from('serie').insert(rows);
@@ -564,7 +596,7 @@ function vPerfil() {
    <div style="max-width:260px;margin:0 auto 12px">${body(() => '#18501A', { mapa: st.mapaDraft || ME.mapa_muscular, label: 'Vista previa del mapa' })}</div>
    <div class="grid2"><label class="fld"><span class="eyebrow">Peso corporal (kg)</span><input class="txt" name="peso" type="number" min="20" max="300" step="0.1" inputmode="decimal" value="${ME.peso_corporal_kg ?? ''}"></label>
    <label class="fld"><span class="eyebrow">Nacimiento</span><input class="txt" name="nac" type="date" value="${ME.fecha_nacimiento ?? ''}"></label></div>
-   <p class="small mut" style="margin:0 0 10px">Los pesos mínimos de cada rango son distintos para hombre y mujer. "Otro" y "Sin indicar" usan la tabla de hombre.</p>
+   <p class="small mut" style="margin:0 0 10px">Tus rangos se ajustan a tu sexo, tu peso corporal y tu edad. Cada sesión guarda el peso que tenías ese día, así que actualiza tu peso cuando cambie. "Otro" y "Sin indicar" usan la tabla de hombre.</p>
    <p class="msg" id="pmsg"></p>
    <button class="btn pri full" type="submit">Guardar</button></form>
   <button class="btn full" type="button" data-salir>Cerrar sesión</button>`;
@@ -581,8 +613,9 @@ function vAuth() {
    ${m !== 'reset' ? `<label class="fld"><span class="eyebrow">Correo</span><input class="txt" name="email" type="email" required autocomplete="email"></label>` : ''}
    ${m !== 'forgot' ? `<label class="fld"><span class="eyebrow">Contraseña</span><input class="txt" name="pass" type="password" required minlength="6" autocomplete="${m === 'in' ? 'current-password' : 'new-password'}"></label>` : ''}
    ${m === 'up' ? `<div class="grid2"><label class="fld"><span class="eyebrow">Género</span><select class="sel" name="genero" style="width:100%;min-height:44px"><option>Hombre</option><option>Mujer</option><option>Otro</option></select></label>
-   <label class="fld"><span class="eyebrow">Peso (kg)</span><input class="txt" name="peso" type="number" min="20" max="300" step="0.1" inputmode="decimal"></label></div>
-   <label class="fld"><span class="eyebrow">Fecha de nacimiento</span><input class="txt" name="nac" type="date"></label>` : ''}
+   <label class="fld"><span class="eyebrow">Peso (kg)</span><input class="txt" name="peso" type="number" min="20" max="300" step="0.1" inputmode="decimal" required></label></div>
+   <label class="fld"><span class="eyebrow">Fecha de nacimiento</span><input class="txt" name="nac" type="date" required></label>
+   <p class="small mut" style="margin:0 0 8px">Tus rangos se ajustan a tu sexo, tu peso y tu edad.</p>` : ''}
    <p class="msg e" id="amsg" role="alert"></p>
    <button class="btn pri full" type="submit">${{ in: 'Entrar', up: 'Crear cuenta', forgot: 'Enviar enlace', reset: 'Guardar contraseña' }[m]}</button></form>
    ${m === 'in' ? `<div class="row between" style="margin-top:8px"><button class="link" type="button" data-auth="up">Crear cuenta</button><button class="link" type="button" data-auth="forgot" style="color:var(--mut)">He olvidado la contraseña</button></div>` : ''}
@@ -612,6 +645,8 @@ async function enviarAuth(form) {
     if (m === 'in') ok(await sb.auth.signInWithPassword({ email: g('email'), password: g('pass') }));
     if (m === 'up') {
       if (!g('nombre')) { msg.textContent = 'Escribe tu nombre.'; btn.disabled = false; return; }
+      if (!(+g('peso') >= 20 && +g('peso') <= 300)) { msg.textContent = 'Escribe tu peso corporal: lo usamos para ajustar tus rangos.'; btn.disabled = false; return; }
+      if (!g('nac') || edadEn(g('nac'), Date.now()) < 10 || edadEn(g('nac'), Date.now()) > 100) { msg.textContent = 'Escribe una fecha de nacimiento válida: la edad ajusta tus rangos.'; btn.disabled = false; return; }
       const data = ok(await sb.auth.signUp({ email: g('email'), password: g('pass'), options: { emailRedirectTo: location.origin, data: { nombre: g('nombre'), genero: g('genero'), peso_corporal_kg: g('peso'), fecha_nacimiento: g('nac') } } }));
       if (!data.session) { st.auth = 'sent'; st.authMsg = `Te hemos enviado un correo a ${g('email')} para confirmar la cuenta. Ábrelo y pulsa el enlace; volverás aquí con la sesión iniciada.`; showAuth(); }
     }
